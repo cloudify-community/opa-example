@@ -98,6 +98,7 @@ node_templates:
       resource_config:
         source:
           location: https://github.com/cloudify-community/opa-example/archive/refs/heads/main.zip
+        source_path: modules/eks/
         variables:
           region: { get_input: aws_region_name }
           cluster_name: { get_input: eks_cluster_name }

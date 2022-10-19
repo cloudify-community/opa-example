@@ -9,7 +9,6 @@ inputs:
 
   opa_endpoint:
     type: string
-    default: "20f6-64-201-235-203.ngrok.io"
     display_label: OPA Endpoint
 
   aws_region_name:
@@ -23,9 +22,9 @@ inputs:
           - us-west-1
           - us-west-2
 
-  # eks_cluster_name:
-  #   type: string
-  #   display_label: EKS Cluster Name
+  eks_cluster_name:
+    type: string
+    display_label: EKS Cluster Name
 
   instance_size:
     type: string
@@ -68,7 +67,7 @@ node_templates:
   policy:
     type: cloudify.rest.Requests
     properties:
-      hosts: [{get_input: opa_endpoint }]
+      hosts: [ { get_input: opa_endpoint } ]
       port: 80
       ssl: false
       verify: false
@@ -98,8 +97,7 @@ node_templates:
     properties:
       resource_config:
         source:
-          location: modules/eks.zip
-        source_path: eks/
+          location: https://github.com/cloudify-community/opa-example/archive/refs/heads/main.zip
         variables:
           region: { get_input: aws_region_name }
           cluster_name: { get_input: eks_cluster_name }

@@ -1,0 +1,10 @@
+rest_calls:
+  - path: {{ policy_path }}
+    response_format: json
+    method: POST
+    nonrecoverable_response:
+      - [ 'result', 'allow', '(?!True)' ]
+    response_translation: [opa_result]
+    payload:
+      input:
+        {{ input | tojson }} 

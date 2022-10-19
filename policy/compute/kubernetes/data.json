@@ -1,0 +1,15 @@
+{
+  "current_clusters": 14,
+  "max_clusters": 15,
+  "approved_projects": [ "payment-processing", "user-backend", "notifications-backend" ],
+  "approved_sizing": {
+    "t3.medium": {
+      "min_instances": 1,
+      "max_instances": 3
+    },
+    "t3.large": {
+      "min_instances": 5,
+      "max_instances": 10
+    }
+  }
+}

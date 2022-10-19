@@ -1,0 +1,124 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+imports:
+  - https://cloudify.co/spec/cloudify/6.3.0/types.yaml
+  - plugin:cloudify-terraform-plugin?version= >=0.18.8
+  - plugin:cloudify-utilities-plugin
+
+inputs:
+
+  opa_endpoint:
+    type: string
+    default: "20f6-64-201-235-203.ngrok.io"
+    display_label: OPA Endpoint
+
+  aws_region_name:
+    type: string
+    default: 'us-west-2'
+    display_label: AWS Region
+    constraints:
+      - valid_values:
+          - us-east-1
+          - us-east-2
+          - us-west-1
+          - us-west-2
+
+  # eks_cluster_name:
+  #   type: string
+  #   display_label: EKS Cluster Name
+
+  instance_size:
+    type: string
+    default: t3.medium
+    display_label: Node Instance Size
+    constraints:
+      - valid_values:
+          - t3.medium
+          - t3.large
+
+  num_instances:
+    type: integer
+    default: 1
+    display_label: Number of Nodes
+
+  kubernetes_version:
+    type: string
+    default: '1.20'
+    display_label: Kubernetes Version
+
+  internal_project:
+    type: string
+    default: user-backend
+    display_label: Internal Project
+    constraints:
+      - valid_values:
+          - payment-processing
+          - user-backend
+          - notifications-backend
+          - order-processing
+
+dsl_definitions:
+  client_config: &client_config
+    aws_access_key_id: { get_secret: aws_access_key_id }
+    aws_secret_access_key: { get_secret: aws_secret_access_key }
+    region_name: { get_input: aws_region_name }
+
+node_templates:
+
+  policy:
+    type: cloudify.rest.Requests
+    properties:
+      hosts: [{get_input: opa_endpoint }]
+      port: 80
+      ssl: false
+      verify: false
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          inputs:
+            template_file: templates/opa.yaml.j2
+            prerender: true
+            save_path: opa_result
+            params:
+              policy_path: /v1/data/kubernetes/capacity
+              input:
+                instance_size: { get_input: instance_size }
+                num_instances: { get_input: num_instances }
+                project: { get_input: internal_project }
+          max_retries: 0
+
+  terraform:
+    type: cloudify.nodes.terraform
+    properties:
+      resource_config:
+        installation_source: https://releases.hashicorp.com/terraform/1.1.4/terraform_1.1.4_linux_amd64.zip
+  
+  eks_cluster:
+    type: cloudify.nodes.terraform.Module
+    properties:
+      resource_config:
+        source:
+          location: modules/eks.zip
+        source_path: eks/
+        variables:
+          region: { get_input: aws_region_name }
+          cluster_name: { get_input: eks_cluster_name }
+          nodegroup_name: { concat: [ 'eks_node_group', { get_input: eks_cluster_name } ] }
+          kubernetes_version: { get_input: kubernetes_version }
+          num_nodes: { get_input: num_instances }
+          instance_size: { get_input: instance_size }
+          aws_access_key: { get_secret: aws_access_key_id }
+          aws_secret_key: { get_secret: aws_secret_access_key }
+    relationships:
+      - type: cloudify.terraform.relationships.run_on_host
+        target: terraform
+      - type: cloudify.relationships.depends_on
+        target: policy
+
+capabilities:
+
+  cluster_id:
+    value: { get_attribute: [eks_cluster, outputs, cluster_id, value ] }
+
+  cluster_endpoint:
+    value: { get_attribute: [ eks_cluster, outputs, cluster_endpoint, value ] }
